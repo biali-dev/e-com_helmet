@@ -25,6 +25,7 @@ function readCart(): CartItem[] {
 
 function writeCart(items: CartItem[]) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    window.dispatchEvent(new Event("cart:updated"));
 }
 
 export function getCart(): CartItem[] {

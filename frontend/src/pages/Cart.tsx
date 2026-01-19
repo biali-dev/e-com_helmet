@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import type { CartItem } from "../cart/cartStore"
+import { Link, useNavigate } from "react-router-dom";
+import type { CartItem } from "../cart/cartStore";
 import {
     getCart,
     removeFromCart,
@@ -10,14 +10,16 @@ import {
 } from "../cart/cartStore";
 
 export default function CartPage() {
-    const [items, setItems] = useState<CartItem[]>([]);
+    const navigate = useNavigate();
 
-    function refresh() {
-        setItems(getCart());
-    }
+    // ✅ Inicializa o state direto do localStorage (sem useEffect)
+    const [items, setItems] = useState<CartItem[]>(() => getCart());
 
+    // ✅ Atualiza o state quando o carrinho mudar (evento customizado)
     useEffect(() => {
-        refresh();
+        const handler = () => setItems(getCart());
+        window.addEventListener("cart:updated", handler);
+        return () => window.removeEventListener("cart:updated", handler);
     }, []);
 
     const total = cartTotal();
@@ -70,56 +72,31 @@ export default function CartPage() {
 
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                     <button
-                                        onClick={() => {
-                                            setQty(i.productId, i.qty - 1);
-                                            refresh();
-                                        }}
-                                        style={{ width: 34, height: 34, borderRadius: 8, border: "1px solid #ddd", cursor: "pointer" }}
+                                        onClick={() => setQty(i.productId, i.qty - 1)}
+                                        style={qtyBtnStyle}
                                     >
                                         -
                                     </button>
 
                                     <input
                                         value={i.qty}
-                                        onChange={(e) => {
-                                            const v = Number(e.target.value || 1);
-                                            setQty(i.productId, v);
-                                            refresh();
-                                        }}
+                                        onChange={(e) => setQty(i.productId, Number(e.target.value || 1))}
                                         inputMode="numeric"
-                                        style={{
-                                            width: 52,
-                                            height: 34,
-                                            textAlign: "center",
-                                            borderRadius: 8,
-                                            border: "1px solid #ddd",
-                                        }}
+                                        style={qtyInputStyle}
                                     />
 
                                     <button
-                                        onClick={() => {
-                                            setQty(i.productId, i.qty + 1);
-                                            refresh();
-                                        }}
-                                        style={{ width: 34, height: 34, borderRadius: 8, border: "1px solid #ddd", cursor: "pointer" }}
+                                        onClick={() => setQty(i.productId, i.qty + 1)}
+                                        style={qtyBtnStyle}
                                     >
                                         +
                                     </button>
                                 </div>
 
                                 <button
-                                    onClick={() => {
-                                        removeFromCart(i.productId);
-                                        refresh();
-                                    }}
+                                    onClick={() => removeFromCart(i.productId)}
                                     title="Remover"
-                                    style={{
-                                        width: 34,
-                                        height: 34,
-                                        borderRadius: 8,
-                                        border: "1px solid #ddd",
-                                        cursor: "pointer",
-                                    }}
+                                    style={removeBtnStyle}
                                 >
                                     🗑
                                 </button>
@@ -144,32 +121,11 @@ export default function CartPage() {
                         </div>
 
                         <div style={{ display: "flex", gap: 8 }}>
-                            <button
-                                onClick={() => {
-                                    clearCart();
-                                    refresh();
-                                }}
-                                style={{
-                                    padding: "10px 12px",
-                                    borderRadius: 8,
-                                    border: "1px solid #ddd",
-                                    cursor: "pointer",
-                                    fontWeight: 700,
-                                }}
-                            >
+                            <button onClick={clearCart} style={secondaryBtnStyle}>
                                 Limpar carrinho
                             </button>
 
-                            <button
-                                onClick={() => alert("Próximo passo: checkout")}
-                                style={{
-                                    padding: "10px 12px",
-                                    borderRadius: 8,
-                                    border: "1px solid #ddd",
-                                    cursor: "pointer",
-                                    fontWeight: 800,
-                                }}
-                            >
+                            <button onClick={() => navigate("/checkout")} style={primaryBtnStyle}>
                                 Ir para o checkout
                             </button>
                         </div>
@@ -179,3 +135,45 @@ export default function CartPage() {
         </div>
     );
 }
+
+/* ===== estilos reutilizáveis ===== */
+
+const qtyBtnStyle: React.CSSProperties = {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    border: "1px solid #ddd",
+    cursor: "pointer",
+};
+
+const qtyInputStyle: React.CSSProperties = {
+    width: 52,
+    height: 34,
+    textAlign: "center",
+    borderRadius: 8,
+    border: "1px solid #ddd",
+};
+
+const removeBtnStyle: React.CSSProperties = {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    border: "1px solid #ddd",
+    cursor: "pointer",
+};
+
+const secondaryBtnStyle: React.CSSProperties = {
+    padding: "10px 12px",
+    borderRadius: 8,
+    border: "1px solid #ddd",
+    cursor: "pointer",
+    fontWeight: 700,
+};
+
+const primaryBtnStyle: React.CSSProperties = {
+    padding: "10px 14px",
+    borderRadius: 8,
+    border: "1px solid #ddd",
+    cursor: "pointer",
+    fontWeight: 800,
+};
