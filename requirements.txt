@@ -8,3 +8,4 @@ pillow==12.1.0
 psycopg==3.3.2
 PyJWT==2.10.1
 sqlparse==0.5.5
+requests==2.32.3

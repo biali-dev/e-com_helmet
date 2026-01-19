@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { getCart, clearCart, cartTotal } from "../cart/cartStore";
@@ -6,7 +6,7 @@ import type { CartItem } from "../cart/cartStore";
 
 import { cartItemsToCheckoutItems, checkout } from "../api/orders";
 import { createPayment } from "../api/payments";
-import type { PaymentMethod } from "../api/payments";
+import type { PaymentMethod, PaymentProvider } from "../api/payments";
 
 export default function CheckoutPage() {
     const navigate = useNavigate();
@@ -18,17 +18,25 @@ export default function CheckoutPage() {
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
 
+    const [provider, setProvider] = useState<PaymentProvider>("dummy");
     const [method, setMethod] = useState<PaymentMethod>("pix");
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Carrega carrinho quando entra no checkout
+    // Carrega carrinho ao entrar no checkout
     useEffect(() => {
         const cart = getCart();
         setItems(cart);
         setTotal(cartTotal());
     }, []);
+
+    // Recalcula total se o carrinho mudar nesta tela (por segurança)
+    useEffect(() => {
+        setTotal(cartTotal());
+    }, [items]);
+
+    const mpCardBlocked = useMemo(() => provider === "mercado_pago" && method === "card", [provider, method]);
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -44,7 +52,13 @@ export default function CheckoutPage() {
             return;
         }
 
+        if (mpCardBlocked) {
+            setError("Cartão no Mercado Pago ainda não está implementado. Use Pix por enquanto.");
+            return;
+        }
+
         setLoading(true);
+
         try {
             // 1) Cria pedido
             const order = await checkout({
@@ -54,15 +68,21 @@ export default function CheckoutPage() {
                 items: cartItemsToCheckoutItems(items),
             });
 
-            // 2) Cria pagamento (pix ou card)
-            const payment = await createPayment(order.id, method);
+            // 2) Cria pagamento com provider + método
+            const payment = await createPayment(order.id, method, provider);
 
             // 3) Limpa carrinho e redireciona para a tela de pagamento
             clearCart();
             navigate(`/pagamento/${payment.id}`);
-        } catch (err) {
-            setError("Erro ao finalizar checkout. Verifique o backend e tente novamente.");
+        } catch (err: any) {
+            const msg =
+                err?.response?.data?.detail ||
+                JSON.stringify(err?.response?.data || {}) ||
+                err?.message ||
+                "Erro desconhecido";
+            setError(`Erro ao finalizar checkout: ${msg}`);
         } finally {
+
             setLoading(false);
         }
     }
@@ -84,7 +104,7 @@ export default function CheckoutPage() {
                 <Link to="/carrinho">← Voltar ao carrinho</Link>
             </div>
 
-            <div style={{ marginTop: 12, opacity: 0.8 }}>
+            <div style={{ marginTop: 12, opacity: 0.85 }}>
                 Total do carrinho: <strong>R$ {total.toFixed(2)}</strong>
             </div>
 
@@ -117,6 +137,18 @@ export default function CheckoutPage() {
                 </label>
 
                 <label>
+                    Gateway (provider)
+                    <select
+                        value={provider}
+                        onChange={(e) => setProvider(e.target.value as PaymentProvider)}
+                        style={{ width: "100%", padding: 10 }}
+                    >
+                        <option value="dummy">Dummy (teste)</option>
+                        <option value="mercado_pago">Mercado Pago</option>
+                    </select>
+                </label>
+
+                <label>
                     Método de pagamento
                     <select
                         value={method}
@@ -127,6 +159,13 @@ export default function CheckoutPage() {
                         <option value="card">Cartão</option>
                     </select>
                 </label>
+
+                {mpCardBlocked && (
+                    <div style={{ border: "1px solid #f0d98b", background: "#fff7db", padding: 10, borderRadius: 8 }}>
+                        Cartão via Mercado Pago ainda não está implementado (precisa tokenização no frontend).
+                        Selecione Pix para continuar.
+                    </div>
+                )}
 
                 {error && <div style={{ color: "crimson" }}>{error}</div>}
 

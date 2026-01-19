@@ -25,7 +25,9 @@ export default function PaymentPage() {
     useEffect(() => {
         if (!id) return;
         refresh();
-        const t = setInterval(refresh, 2000); // polling simples
+
+        // polling simples para atualização de status
+        const t = setInterval(refresh, 2000);
         return () => clearInterval(t);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
@@ -35,6 +37,11 @@ export default function PaymentPage() {
     if (!payment) return <div style={{ padding: 24 }}>Pagamento não encontrado.</div>;
 
     const isPaid = payment.status === "paid";
+    const isPix = payment.method === "pix";
+    const canSimulate = payment.provider === "dummy";
+
+    const qrBase64 = payment.pix_qr_code_base64?.trim();
+    const qrText = payment.pix_qr_code?.trim();
 
     return (
         <div style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
@@ -45,6 +52,7 @@ export default function PaymentPage() {
 
             <div style={{ marginTop: 12, border: "1px solid #e0e0e0", borderRadius: 8, padding: 12, background: "#fff" }}>
                 <div><strong>Pedido:</strong> #{payment.order}</div>
+                <div><strong>Provider:</strong> {payment.provider}</div>
                 <div><strong>Método:</strong> {payment.method.toUpperCase()}</div>
                 <div><strong>Status:</strong> {payment.status}</div>
                 <div><strong>Valor:</strong> R$ {payment.amount}</div>
@@ -56,36 +64,54 @@ export default function PaymentPage() {
                 </div>
             ) : (
                 <div style={{ marginTop: 16 }}>
-                    {payment.method === "pix" ? (
+                    {isPix ? (
                         <div style={{ border: "1px solid #e0e0e0", borderRadius: 8, padding: 12, background: "#fff" }}>
                             <h2 style={{ marginTop: 0 }}>Pix</h2>
-                            <p>Use o QR ou o “copia e cola” abaixo.</p>
+                            <p>Escaneie o QR Code ou use o “copia e cola”.</p>
 
-                            {payment.pix_qr_code_base64 ? (
+                            {qrBase64 ? (
                                 <img
                                     alt="QR Code Pix"
-                                    src={`data:image/png;base64,${payment.pix_qr_code_base64}`}
-                                    style={{ width: 240, height: 240, objectFit: "contain", border: "1px solid #eee", borderRadius: 8 }}
+                                    src={`data:image/png;base64,${qrBase64}`}
+                                    style={{ width: 260, height: 260, objectFit: "contain", border: "1px solid #eee", borderRadius: 8 }}
                                 />
                             ) : (
-                                <p style={{ opacity: 0.7 }}>QR base64 não disponível (dummy pode retornar vazio dependendo do fluxo).</p>
+                                <div style={{ opacity: 0.7 }}>
+                                    QR base64 não disponível (alguns fluxos podem não retornar). Use o copia e cola abaixo.
+                                </div>
                             )}
 
-                            {payment.pix_qr_code && (
+                            {qrText ? (
                                 <>
                                     <p style={{ marginTop: 12, marginBottom: 6 }}><strong>Copia e cola:</strong></p>
                                     <textarea
                                         readOnly
-                                        value={payment.pix_qr_code}
+                                        value={qrText}
                                         style={{ width: "100%", minHeight: 90, padding: 10, borderRadius: 8, border: "1px solid #ddd" }}
                                     />
+                                    <button
+                                        onClick={async () => {
+                                            await navigator.clipboard.writeText(qrText);
+                                            alert("Copia e cola copiado!");
+                                        }}
+                                        style={{ marginTop: 8, padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", cursor: "pointer", fontWeight: 700 }}
+                                    >
+                                        Copiar
+                                    </button>
                                 </>
+                            ) : (
+                                <div style={{ marginTop: 10, opacity: 0.7 }}>
+                                    Cód. Pix (copia e cola) não disponível.
+                                </div>
                             )}
                         </div>
                     ) : (
                         <div style={{ border: "1px solid #e0e0e0", borderRadius: 8, padding: 12, background: "#fff" }}>
                             <h2 style={{ marginTop: 0 }}>Cartão</h2>
-                            <p>Integração real de cartão entra no próximo passo (gateway). Por enquanto, status fica “pending”.</p>
+                            <p>
+                                Integração real de cartão entra no próximo passo (tokenização + criação de pagamento no provider).
+                                Por enquanto o status fica “pending”.
+                            </p>
                         </div>
                     )}
 
@@ -97,19 +123,21 @@ export default function PaymentPage() {
                             Atualizar status
                         </button>
 
-                        <button
-                            onClick={async () => {
-                                await simulatePaid(payment.id);
-                                await refresh();
-                            }}
-                            style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", cursor: "pointer", fontWeight: 800 }}
-                            title="Somente para o provider dummy"
-                        >
-                            Simular pago (dummy)
-                        </button>
+                        {canSimulate && (
+                            <button
+                                onClick={async () => {
+                                    await simulatePaid(payment.id);
+                                    await refresh();
+                                }}
+                                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", cursor: "pointer", fontWeight: 800 }}
+                            >
+                                Simular pago (dummy)
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
         </div>
     );
 }
+

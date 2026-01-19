@@ -1,6 +1,7 @@
 import { api } from "./client";
 
 export type PaymentMethod = "pix" | "card";
+export type PaymentProvider = "dummy" | "mercado_pago";
 
 export type Payment = {
     id: number;
@@ -17,10 +18,15 @@ export type Payment = {
     created_at: string;
 };
 
-export async function createPayment(orderId: number, method: PaymentMethod): Promise<Payment> {
+export async function createPayment(
+    orderId: number,
+    method: PaymentMethod,
+    provider: PaymentProvider
+): Promise<Payment> {
     const { data } = await api.post<Payment>("/payments/create/", {
         order_id: orderId,
         method,
+        provider,
     });
     return data;
 }
@@ -32,7 +38,7 @@ export async function getPayment(paymentId: number): Promise<Payment> {
 
 // Dummy helper: simular pagamento via webhook
 export async function simulatePaid(paymentId: number): Promise<void> {
-    await api.post("/payments/webhook/", {
+    await api.post("/payments/webhook/dummy/", {
         payment_id: paymentId,
         status: "paid",
     });

@@ -1,78 +1,150 @@
+# backend/apps/payments/views.py
+
 import uuid
+from typing import Any
+
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
 from rest_framework.generics import RetrieveAPIView
 
 from apps.orders.models import Order
 from .models import Payment, PaymentEvent
 from .serializers import PaymentCreateSerializer, PaymentSerializer
-from .services import create_payment_dummy
+from .providers.registry import get_provider
 
-class PaymentDetailAPIView(RetrieveAPIView):
-    queryset = Payment.objects.all()
-    serializer_class = PaymentSerializer
 
 class PaymentCreateAPIView(APIView):
+    """
+    Cria um pagamento para um Order existente.
+
+    Body:
+      {
+        "order_id": 123,
+        "method": "pix" | "card",
+        "provider": "dummy" | "mercado_pago" (opcional; default dummy)
+      }
+
+    Idempotência:
+      - aceita header "Idempotency-Key"
+      - se já existir Payment para o Order, retorna o existente
+    """
+
     def post(self, request):
-        s = PaymentCreateSerializer(data=request.data)
-        s.is_valid(raise_exception=True)
+        serializer = PaymentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        order = Order.objects.get(id=s.validated_data["order_id"])
+        order = Order.objects.get(id=serializer.validated_data["order_id"])
 
-        # Idempotência simples: o front pode mandar header depois.
+        provider_name = request.data.get("provider") or "dummy"
+        provider = get_provider(provider_name)
+
         idempotency_key = request.headers.get("Idempotency-Key") or str(uuid.uuid4())
 
         payment, created = Payment.objects.get_or_create(
             order=order,
             defaults={
-                "method": s.validated_data["method"],
+                "provider": provider.name,
+                "method": serializer.validated_data["method"],
                 "amount": order.subtotal,
                 "idempotency_key": idempotency_key,
+                "status": Payment.Status.CREATED,
             },
         )
 
+        # Se já existe, devolve (idempotente por Order)
         if not created:
-            # Se já existe, só devolve
-            return Response(PaymentSerializer(payment).data)
+            return Response(PaymentSerializer(payment).data, status=status.HTTP_200_OK)
 
-        # MVP: provider dummy
-        payment = create_payment_dummy(payment)
+        # Cria no provider (Pix ou Card)
+        try:
+            # Para Pix, MP exige payer email; no MVP usamos o email do pedido
+            payment = provider.create_payment(payment, payer_email=order.email)
+        except NotImplementedError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_501_NOT_IMPLEMENTED)
+        except Exception as e:
+            # Evita vazar detalhes sensíveis em produção
+            return Response({"detail": f"Falha ao criar pagamento: {e}"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(PaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
 
 
 class PaymentWebhookAPIView(APIView):
     """
-    No provedor real, aqui você valida assinatura e atualiza status.
-    No dummy, vamos aceitar um payload simples.
+    Webhook por provider:
+      POST /api/v1/payments/webhook/<provider>/
+
+    Exemplos:
+      - dummy: /api/v1/payments/webhook/dummy/
+      - mercado_pago: /api/v1/payments/webhook/mercado_pago/
+
+    Cada provider:
+      - valida assinatura (se aplicável)
+      - parseia evento
+      - encontra Payment correspondente
+      - opcionalmente faz refresh de status via API do provider
     """
+
     permission_classes = [AllowAny]
 
-    def post(self, request):
-        payload = request.data or {}
-        payment_id = payload.get("payment_id")
-        new_status = payload.get("status")  # "paid", "failed", etc.
+    def post(self, request, provider: str):
+        prov = get_provider(provider)
 
-        if not payment_id or not new_status:
-            return Response({"detail": "payment_id e status são obrigatórios"}, status=400)
-
+        # 1) Parse + valida assinatura (quando aplicável)
         try:
-            payment = Payment.objects.get(id=payment_id)
-        except Payment.DoesNotExist:
-            return Response({"detail": "payment não encontrado"}, status=404)
+            event = prov.parse_webhook(request)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+        # 2) Localiza Payment
+        payment = prov.find_payment(event)
+        if not payment:
+            return Response({"detail": "payment não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+        # 3) Audita evento bruto
         PaymentEvent.objects.create(
             payment=payment,
-            event_type=f"webhook_{new_status}",
-            raw_payload=payload,
+            event_type=event.event_type,
+            provider_event_id=event.provider_event_id,
+            raw_payload=_safe_payload(request.data),
         )
 
-        payment.status = new_status
-        payment.save(update_fields=["status", "updated_at"])
+        # 4) Atualiza status
+        # Alguns providers (ex. Mercado Pago) recomendam consultar API para obter status final
+        if hasattr(prov, "refresh_status_from_api"):
+            try:
+                payment = prov.refresh_status_from_api(payment)
+            except Exception as e:
+                return Response({"detail": f"Falha ao atualizar status no provider: {e}"}, status=400)
+        else:
+            # Se o provider não tem refresh, usa o status normalizado do evento
+            if event.status:
+                payment.status = event.status
+                payment.save(update_fields=["status", "updated_at"])
 
-        if new_status == Payment.Status.PAID:
+        # 5) Se pago, marca order como pago
+        if payment.status == Payment.Status.PAID:
             payment.mark_paid()
 
-        return Response({"ok": True})
+        return Response({"ok": True}, status=status.HTTP_200_OK)
+
+
+class PaymentDetailAPIView(RetrieveAPIView):
+    """
+    GET /api/v1/payments/<id>/
+    Útil para o frontend fazer polling e mostrar status atualizado.
+    """
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+
+
+def _safe_payload(data: Any) -> Any:
+    """
+    Mantém payload auditável sem quebrar em caso de tipos estranhos.
+    """
+    try:
+        # Se for JSON serializável, ok
+        return data
+    except Exception:
+        return {"_non_serializable_payload": True}
