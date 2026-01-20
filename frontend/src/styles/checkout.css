@@ -1,0 +1,65 @@
+/* ============ Checkout responsive layout ============ */
+
+.checkout-wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 26px 20px 50px;
+}
+
+.checkout-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.checkout-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 18px;
+    align-items: start;
+}
+
+.checkout-sticky {
+    position: sticky;
+    top: 92px;
+}
+
+/* ============ Breakpoints ============ */
+
+/* tablets */
+@media (max-width: 980px) {
+    .checkout-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .checkout-sticky {
+        position: static;
+    }
+}
+
+/* mobile */
+@media (max-width: 640px) {
+    .checkout-wrap {
+        padding: 18px 14px 40px;
+    }
+
+    .checkout-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    /* opcional: reduzir títulos gigantes no mobile */
+    .checkout-h1 {
+        font-size: 40px !important;
+    }
+
+    /* opcional: campos em 1 coluna */
+    .checkout-two-col {
+        grid-template-columns: 1fr !important;
+    }
+
+    .checkout-cep-row {
+        grid-template-columns: 1fr !important;
+    }
+}

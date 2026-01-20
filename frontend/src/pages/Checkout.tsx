@@ -12,6 +12,7 @@ import { quoteShipping } from "../api/shipping";
 import type { ShippingQuote } from "../api/shipping";
 
 import { fetchAddressByCep } from "../api/cep";
+import "../styles/checkout.css";
 
 type ApiErrorLike = {
     response?: { data?: unknown };
@@ -240,7 +241,7 @@ export default function CheckoutPage() {
         return (
             <div style={pageStyle}>
                 <TopBar />
-                <div style={wrapStyle}>
+                <div className="checkout-wrap" style={wrapStyle}>
                     <h1 style={h1Style}>CHECKOUT</h1>
                     <p style={{ color: "rgba(255,255,255,.75)" }}>Seu carrinho está vazio.</p>
                     <Link to="/carrinho" style={linkStyle}>Voltar ao carrinho →</Link>
@@ -254,10 +255,10 @@ export default function CheckoutPage() {
             <TopBar />
 
             <div style={wrapStyle}>
-                <div style={titleRowStyle}>
+                <div className="checkout-title-row" style={titleRowStyle}>
                     <div>
                         <div style={kickerStyle}>Checkout</div>
-                        <h1 style={h1Style}>FINALIZAR COMPRA</h1>
+                        <h1 className="checkout-h1" style={h1Style}>FINALIZAR COMPRA</h1>
                         <div style={subTitleStyle}>
                             Subtotal: <strong>R$ {money(subtotal)}</strong>
                             {selectedQuote ? (
@@ -276,7 +277,7 @@ export default function CheckoutPage() {
                     <Link to="/carrinho" style={backLinkStyle}>← Voltar ao carrinho</Link>
                 </div>
 
-                <div style={gridStyle}>
+                <div className="checkout-grid" style={gridStyle}>
                     {/* LEFT */}
                     <form onSubmit={onSubmit} style={{ display: "grid", gap: 14 }}>
                         {/* DADOS */}
@@ -285,7 +286,7 @@ export default function CheckoutPage() {
                                 <input value={fullName} onChange={(e) => setFullName(e.target.value)} />
                             </Field>
 
-                            <div style={twoColStyle}>
+                            <div className="checkout-two-col" style={twoColStyle}>
                                 <Field label="E-mail">
                                     <input value={email} onChange={(e) => setEmail(e.target.value)} />
                                 </Field>
@@ -297,7 +298,7 @@ export default function CheckoutPage() {
 
                         {/* ENTREGA */}
                         <Section title="ENTREGA">
-                            <div style={cepRowStyle}>
+                            <div className="checkout-cep-row" style={cepRowStyle}>
                                 <Field label="CEP">
                                     <input
                                         value={zip}
@@ -443,7 +444,7 @@ export default function CheckoutPage() {
 
                     {/* RIGHT */}
                     <div style={rightColStyle}>
-                        <div style={summaryStickyStyle}>
+                        <div className="checkout-sticky" style={summaryStickyStyle}>
                             <div style={summaryCardStyle}>
                                 <div style={miniTitleStyle}>RESUMO</div>
 

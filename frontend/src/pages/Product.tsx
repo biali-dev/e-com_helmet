@@ -4,6 +4,7 @@ import TopBar from "../components/TopBar";
 import { fetchProductBySlug } from "../api/catalog";
 import type { Product } from "../api/catalog";
 import { addToCart } from "../cart/cartStore";
+import "../styles/product.css";
 
 export default function ProductPage() {
     const { slug } = useParams<{ slug: string }>();
@@ -26,14 +27,14 @@ export default function ProductPage() {
         <div style={pageStyle}>
             <TopBar />
 
-            <div style={wrapStyle}>
+            <div className="product-wrap" style={wrapStyle}>
                 <Link to="/" style={ghostLinkStyle}>← Voltar</Link>
 
                 {loading && <div style={{ color: "rgba(255,255,255,.75)", marginTop: 12 }}>Carregando...</div>}
                 {err && <div style={errorStyle}>{err}</div>}
 
                 {product && (
-                    <div style={gridStyle}>
+                    <div className="product-grid" style={gridStyle}>
                         <div style={leftStyle}>
                             <div style={imgWrapStyle}>
                                 {product.images?.[0]?.image ? (
@@ -44,7 +45,7 @@ export default function ProductPage() {
                             </div>
 
                             {product.images?.length > 1 && (
-                                <div style={thumbRowStyle}>
+                                <div className="product-thumbs" style={thumbRowStyle}>
                                     {product.images.slice(1).map((im) => (
                                         <img key={im.id} src={im.image} alt={product.name} style={thumbStyle} />
                                     ))}
@@ -54,7 +55,7 @@ export default function ProductPage() {
 
                         <div style={rightStyle}>
                             <div style={kickerStyle}>Produto</div>
-                            <h1 style={h1Style}>{product.name}</h1>
+                            <h1 className="product-title" style={h1Style}>{product.name}</h1>
 
                             <div style={metaStyle}>
                                 {product.category?.name}{product.brand ? ` • ${product.brand.name}` : ""}
@@ -66,7 +67,7 @@ export default function ProductPage() {
                                 <div style={descStyle}>{product.description}</div>
                             )}
 
-                            <div style={ctaRowStyle}>
+                            <div className="product-cta" style={ctaRowStyle}>
                                 <button
                                     onClick={() => {
                                         addToCart(product, 1);
