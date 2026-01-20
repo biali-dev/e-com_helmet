@@ -4,6 +4,7 @@ import ProductPage from "./pages/Product";
 import CartPage from "./pages/Cart";
 import CheckoutPage from "./pages/Checkout";
 import PaymentPage from "./pages/Payment";
+import CardPaymentPage from "./pages/CardPayment";
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/carrinho" element={<CartPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/pagamento/:paymentId" element={<PaymentPage />} />
+        <Route path="/pagar-cartao/:orderId" element={<CardPaymentPage />} />
       </Routes>
     </BrowserRouter>
   );

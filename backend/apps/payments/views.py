@@ -14,30 +14,17 @@ from .models import Payment, PaymentEvent
 from .serializers import PaymentCreateSerializer, PaymentSerializer
 from .providers.registry import get_provider
 
-
 class PaymentCreateAPIView(APIView):
-    """
-    Cria um pagamento para um Order existente.
-
-    Body:
-      {
-        "order_id": 123,
-        "method": "pix" | "card",
-        "provider": "dummy" | "mercado_pago" (opcional; default dummy)
-      }
-
-    Idempotência:
-      - aceita header "Idempotency-Key"
-      - se já existir Payment para o Order, retorna o existente
-    """
-
     def post(self, request):
         serializer = PaymentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        order = Order.objects.get(id=serializer.validated_data["order_id"])
+        order_id = serializer.validated_data["order_id"]
+        method = serializer.validated_data["method"]
+        provider_name = serializer.validated_data.get("provider") or request.data.get("provider") or "dummy"
+        card_data = serializer.validated_data.get("card")
 
-        provider_name = request.data.get("provider") or "dummy"
+        order = Order.objects.get(id=order_id)
         provider = get_provider(provider_name)
 
         idempotency_key = request.headers.get("Idempotency-Key") or str(uuid.uuid4())
@@ -46,29 +33,23 @@ class PaymentCreateAPIView(APIView):
             order=order,
             defaults={
                 "provider": provider.name,
-                "method": serializer.validated_data["method"],
+                "method": method,
                 "amount": order.subtotal,
                 "idempotency_key": idempotency_key,
                 "status": Payment.Status.CREATED,
             },
         )
 
-        # Se já existe, devolve (idempotente por Order)
         if not created:
             return Response(PaymentSerializer(payment).data, status=status.HTTP_200_OK)
 
-        # Cria no provider (Pix ou Card)
         try:
-            # Para Pix, MP exige payer email; no MVP usamos o email do pedido
-            payment = provider.create_payment(payment, payer_email=order.email)
-        except NotImplementedError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_501_NOT_IMPLEMENTED)
+            payment = provider.create_payment(payment, payer_email=order.email, card_data=card_data)
         except Exception as e:
-            # Evita vazar detalhes sensíveis em produção
-            return Response({"detail": f"Falha ao criar pagamento: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+            # deixa em 400 com mensagem legível
+            raise ValidationError({"detail": str(e)})
 
         return Response(PaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
-
 
 class PaymentWebhookAPIView(APIView):
     """

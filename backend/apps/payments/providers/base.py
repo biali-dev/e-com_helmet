@@ -18,7 +18,7 @@ class WebhookEvent:
 class PaymentProvider(Protocol):
     name: str
 
-    def create_payment(self, payment: Payment, *, payer_email: str) -> Payment:
+    def create_payment(self, payment: Payment, *, payer_email: str, card_data: dict | None = None) -> Payment:
         ...
 
     def parse_webhook(self, request) -> WebhookEvent:
