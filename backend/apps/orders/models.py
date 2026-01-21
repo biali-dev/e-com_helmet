@@ -1,5 +1,6 @@
 from decimal import Decimal
 from django.db import models
+from django.conf import settings
 
 
 class Order(models.Model):
@@ -17,6 +18,13 @@ class Order(models.Model):
     # =========================
     # DADOS DO CLIENTE
     # =========================
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="orders",
+    )
     full_name = models.CharField(max_length=120)
     email = models.EmailField()
     phone = models.CharField(max_length=30, blank=True)

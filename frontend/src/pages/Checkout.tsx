@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
+import "../styles/mobile-ux.css";
+import "../styles/checkout.css";
 
 import { getCart, clearCart, cartTotal } from "../cart/cartStore";
 import type { CartItem } from "../cart/cartStore";
@@ -12,7 +15,6 @@ import { quoteShipping } from "../api/shipping";
 import type { ShippingQuote } from "../api/shipping";
 
 import { fetchAddressByCep } from "../api/cep";
-import "../styles/checkout.css";
 
 type ApiErrorLike = {
     response?: { data?: unknown };
@@ -76,6 +78,11 @@ export default function CheckoutPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Mobile accordion (Resumo)
+    const [summaryOpen, setSummaryOpen] = useState(false);
+    const summaryRef = useRef<HTMLDivElement | null>(null);
+    const formRef = useRef<HTMLFormElement | null>(null);
+
     // Load cart
     useEffect(() => {
         const cart = getCart();
@@ -95,7 +102,7 @@ export default function CheckoutPage() {
         [provider, method]
     );
 
-    // ✅ Auto-preencher endereço ao completar CEP
+    // ✅ Auto-preencher endereço ao completar CEP (ViaCEP)
     useEffect(() => {
         const clean = zip.replace(/\D/g, "");
         if (clean.length !== 8) return;
@@ -104,14 +111,12 @@ export default function CheckoutPage() {
 
         (async () => {
             setCepLoading(true);
-            // não apaga erro antigo automaticamente; mas se quiser: setError(null);
 
             try {
                 const data = await fetchAddressByCep(zip);
-
                 if (cancelled) return;
 
-                // Preenche somente se vier valor (não sobrescreve caso usuário já tenha digitado algo diferente)
+                // Preenche sem sobrescrever se usuário já digitou
                 if (data.logradouro && !street) setStreet(data.logradouro);
                 if (data.bairro && !district) setDistrict(data.bairro);
                 if (data.localidade && !city) setCity(data.localidade);
@@ -237,12 +242,29 @@ export default function CheckoutPage() {
         }
     }
 
+    function openSummaryAndScroll() {
+        setSummaryOpen(true);
+
+        setTimeout(() => {
+            if (!summaryRef.current) return;
+
+            // offset para não ficar atrás do TopBar
+            const y = summaryRef.current.getBoundingClientRect().top + window.scrollY - 92;
+            window.scrollTo({ top: y, behavior: "smooth" });
+        }, 50);
+    }
+
+    const itemsCount = useMemo(
+        () => items.reduce((sum, i) => sum + i.qty, 0),
+        [items]
+    );
+
     if (items.length === 0) {
         return (
             <div style={pageStyle}>
                 <TopBar />
-                <div className="checkout-wrap" style={wrapStyle}>
-                    <h1 style={h1Style}>CHECKOUT</h1>
+                <div className="checkout-wrap mobile-bottom-space" style={wrapStyle}>
+                    <h1 className="checkout-h1" style={h1Style}>CHECKOUT</h1>
                     <p style={{ color: "rgba(255,255,255,.75)" }}>Seu carrinho está vazio.</p>
                     <Link to="/carrinho" style={linkStyle}>Voltar ao carrinho →</Link>
                 </div>
@@ -254,13 +276,13 @@ export default function CheckoutPage() {
         <div style={pageStyle}>
             <TopBar />
 
-            <div style={wrapStyle}>
+            <div className="checkout-wrap mobile-bottom-space" style={wrapStyle}>
                 <div className="checkout-title-row" style={titleRowStyle}>
                     <div>
                         <div style={kickerStyle}>Checkout</div>
                         <h1 className="checkout-h1" style={h1Style}>FINALIZAR COMPRA</h1>
                         <div style={subTitleStyle}>
-                            Subtotal: <strong>R$ {money(subtotal)}</strong>
+                            Itens: <strong>{itemsCount}</strong> • Subtotal: <strong>R$ {money(subtotal)}</strong>
                             {selectedQuote ? (
                                 <>
                                     {" "}• Frete: <strong>R$ {money(shippingPrice)}</strong> ({selectedQuote.label}, {selectedQuote.days} dias)
@@ -279,7 +301,7 @@ export default function CheckoutPage() {
 
                 <div className="checkout-grid" style={gridStyle}>
                     {/* LEFT */}
-                    <form onSubmit={onSubmit} style={{ display: "grid", gap: 14 }}>
+                    <form ref={formRef} onSubmit={onSubmit} style={{ display: "grid", gap: 14 }}>
                         {/* DADOS */}
                         <Section title="DADOS">
                             <Field label="Nome completo">
@@ -333,7 +355,7 @@ export default function CheckoutPage() {
                                 <input value={street} onChange={(e) => setStreet(e.target.value)} />
                             </Field>
 
-                            <div style={twoColStyle}>
+                            <div className="checkout-two-col" style={twoColStyle}>
                                 <Field label="Número">
                                     <input value={number} onChange={(e) => setNumber(e.target.value)} />
                                 </Field>
@@ -346,7 +368,7 @@ export default function CheckoutPage() {
                                 <input value={district} onChange={(e) => setDistrict(e.target.value)} />
                             </Field>
 
-                            <div style={twoColStyle}>
+                            <div className="checkout-two-col" style={twoColStyle}>
                                 <Field label="Cidade">
                                     <input value={city} onChange={(e) => setCity(e.target.value)} />
                                 </Field>
@@ -408,7 +430,7 @@ export default function CheckoutPage() {
 
                         {/* PAGAMENTO */}
                         <Section title="PAGAMENTO">
-                            <div style={twoColStyle}>
+                            <div className="checkout-two-col" style={twoColStyle}>
                                 <Field label="Gateway">
                                     <select value={provider} onChange={(e) => setProvider(e.target.value as PaymentProvider)}>
                                         <option value="mercado_pago">Mercado Pago</option>
@@ -431,19 +453,49 @@ export default function CheckoutPage() {
                             )}
                         </Section>
 
+                        {/* Mobile accordion summary */}
+                        <div className="mobile-only">
+                            <div ref={summaryRef} className="mobile-accordion">
+                                <div
+                                    className="mobile-accordion-header"
+                                    onClick={() => setSummaryOpen((v) => !v)}
+                                    role="button"
+                                    aria-expanded={summaryOpen}
+                                    tabIndex={0}
+                                >
+                                    <div className="mobile-accordion-title">Resumo</div>
+                                    <div className="mobile-accordion-value">
+                                        R$ {money(selectedQuote ? total : subtotal)} {summaryOpen ? "▴" : "▾"}
+                                    </div>
+                                </div>
+
+                                <div className={`mobile-accordion-anim ${summaryOpen ? "open" : ""}`}>
+                                    <div className="mobile-accordion-body">
+                                        <Line label="Subtotal" value={`R$ ${money(subtotal)}`} />
+                                        <Line label="Frete" value={selectedQuote ? `R$ ${money(shippingPrice)}` : "—"} muted={!selectedQuote} />
+                                        <Line label="Total" value={`R$ ${money(selectedQuote ? total : subtotal)}`} strong />
+                                        <div style={{ marginTop: 10, color: "rgba(255,255,255,.65)", fontSize: 12, fontWeight: 700 }}>
+                                            Itens: {itemsCount}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {error && <div style={errorStyle}>{error}</div>}
 
-                        <button type="submit" disabled={loading} style={{ ...btnStyle, ...btnPrimaryStyle }}>
+                        {/* Desktop submit button */}
+                        <button type="submit" disabled={loading} style={{ ...btnStyle, ...btnPrimaryStyle }} className="desktop-only">
                             {loading ? "Processando..." : "Finalizar e ir para pagamento"}
                         </button>
 
-                        <div style={{ color: "var(--muted)", fontSize: 12, marginTop: -6 }}>
+                        <div style={{ color: "var(--muted)", fontSize: 12, marginTop: -6 }} className="desktop-only">
                             Ao finalizar, você concorda com termos e política de privacidade.
                         </div>
                     </form>
 
-                    {/* RIGHT */}
-                    <div style={rightColStyle}>
+                    {/* RIGHT desktop summary */}
+                    <div style={rightColStyle} className="desktop-only">
                         <div className="checkout-sticky" style={summaryStickyStyle}>
                             <div style={summaryCardStyle}>
                                 <div style={miniTitleStyle}>RESUMO</div>
@@ -489,12 +541,52 @@ export default function CheckoutPage() {
                                     Pagamentos via Pix e Cartão (Mercado Pago).
                                 </div>
                             </div>
-
-                            <div style={{ marginTop: 12 }}>
-                                <Link to="/" style={linkStyle}>Continuar comprando →</Link>
-                            </div>
                         </div>
                     </div>
+                </div>
+
+                {/* Mobile sticky bottom bar */}
+                <div className="mobile-sticky-bar">
+                    <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => {
+                            // (opcional) se quiser abrir o resumo quando houver erro de frete, etc.
+                            formRef.current?.requestSubmit?.();
+                        }}
+                        style={{
+                            flex: 1,
+                            borderRadius: 12,
+                            border: "1px solid rgba(255,255,255,.14)",
+                            padding: "12px 14px",
+                            fontWeight: 1000,
+                            letterSpacing: 1,
+                            textTransform: "uppercase",
+                            cursor: loading ? "not-allowed" : "pointer",
+                            background: "#ffffff",
+                            color: "#111",
+                        }}
+                    >
+                        {loading ? "Processando..." : `Finalizar • R$ ${money(selectedQuote ? total : subtotal)}`}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={openSummaryAndScroll}
+                        style={{
+                            borderRadius: 12,
+                            border: "1px solid rgba(255,255,255,.14)",
+                            padding: "12px 14px",
+                            fontWeight: 1000,
+                            letterSpacing: 1,
+                            textTransform: "uppercase",
+                            cursor: "pointer",
+                            background: "transparent",
+                            color: "rgba(255,255,255,.9)",
+                        }}
+                    >
+                        Resumo
+                    </button>
                 </div>
             </div>
         </div>
@@ -556,11 +648,12 @@ function Line({
 }) {
     return (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <div style={{ color: muted ? "var(--muted)" : "var(--text)", fontWeight: 800 }}>{label}</div>
+            <div style={{ color: muted ? "rgba(255,255,255,.6)" : "rgba(255,255,255,.7)", fontWeight: 900 }}>{label}</div>
             <div style={{ fontWeight: strong ? 1000 : 900, fontSize: strong ? 18 : 14 }}>{value}</div>
         </div>
     );
 }
+
 
 /* ------------------ styles ------------------ */
 

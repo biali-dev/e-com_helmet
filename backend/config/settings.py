@@ -43,7 +43,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     "rest_framework",
+    "rest_framework_simplejwt",
     "corsheaders",
+    "apps.accounts",
     "apps.catalog.apps.CatalogConfig",
     "apps.orders.apps.OrdersConfig",
     "apps.payments.apps.PaymentsConfig",
@@ -79,6 +81,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+}
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases

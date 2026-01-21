@@ -27,70 +27,96 @@ export default function ProductPage() {
         <div style={pageStyle}>
             <TopBar />
 
-            <div className="product-wrap" style={wrapStyle}>
+            <div className="product-wrap product-bottom-space" style={wrapStyle}>
                 <Link to="/" style={ghostLinkStyle}>← Voltar</Link>
 
                 {loading && <div style={{ color: "rgba(255,255,255,.75)", marginTop: 12 }}>Carregando...</div>}
                 {err && <div style={errorStyle}>{err}</div>}
 
                 {product && (
-                    <div className="product-grid" style={gridStyle}>
-                        <div style={leftStyle}>
-                            <div style={imgWrapStyle}>
-                                {product.images?.[0]?.image ? (
-                                    <img src={product.images[0].image} alt={product.name} style={imgStyle} />
-                                ) : (
-                                    <div style={{ width: "100%", height: "100%", background: "#0e111a" }} />
+                    <>
+                        <div className="product-grid" style={gridStyle}>
+                            <div style={leftStyle}>
+                                <div style={imgWrapStyle}>
+                                    {product.images?.[0]?.image ? (
+                                        <img src={product.images[0].image} alt={product.name} style={imgStyle} />
+                                    ) : (
+                                        <div style={{ width: "100%", height: "100%", background: "#0e111a" }} />
+                                    )}
+                                </div>
+
+                                {product.images?.length > 1 && (
+                                    <div className="product-thumbs" style={thumbRowStyle}>
+                                        {product.images.slice(1).map((im) => (
+                                            <img key={im.id} src={im.image} alt={product.name} style={thumbStyle} />
+                                        ))}
+                                    </div>
                                 )}
                             </div>
 
-                            {product.images?.length > 1 && (
-                                <div className="product-thumbs" style={thumbRowStyle}>
-                                    {product.images.slice(1).map((im) => (
-                                        <img key={im.id} src={im.image} alt={product.name} style={thumbStyle} />
-                                    ))}
+                            <div style={rightStyle}>
+                                <div style={kickerStyle}>Produto</div>
+                                <h1 className="product-title" style={h1Style}>
+                                    {product.name}
+                                </h1>
+
+                                <div style={metaStyle}>
+                                    {product.category?.name}
+                                    {product.brand ? ` • ${product.brand.name}` : ""}
                                 </div>
-                            )}
-                        </div>
 
-                        <div style={rightStyle}>
-                            <div style={kickerStyle}>Produto</div>
-                            <h1 className="product-title" style={h1Style}>{product.name}</h1>
+                                <div style={priceStyle}>R$ {product.price}</div>
 
-                            <div style={metaStyle}>
-                                {product.category?.name}{product.brand ? ` • ${product.brand.name}` : ""}
-                            </div>
+                                {product.description && <div style={descStyle}>{product.description}</div>}
 
-                            <div style={priceStyle}>R$ {product.price}</div>
+                                <div className="product-cta" style={ctaRowStyle}>
+                                    <button
+                                        onClick={() => {
+                                            addToCart(product, 1);
+                                            navigate("/carrinho");
+                                        }}
+                                        style={{ ...btnStyle, ...btnPrimaryStyle }}
+                                    >
+                                        Comprar agora
+                                    </button>
 
-                            {product.description && (
-                                <div style={descStyle}>{product.description}</div>
-                            )}
+                                    <button
+                                        onClick={() => addToCart(product, 1)}
+                                        style={{ ...btnStyle, ...btnGhostStyle }}
+                                    >
+                                        Adicionar
+                                    </button>
+                                </div>
 
-                            <div className="product-cta" style={ctaRowStyle}>
-                                <button
-                                    onClick={() => {
-                                        addToCart(product, 1);
-                                        navigate("/carrinho");
-                                    }}
-                                    style={{ ...btnStyle, ...btnPrimaryStyle }}
-                                >
-                                    Comprar agora
-                                </button>
-
-                                <button
-                                    onClick={() => addToCart(product, 1)}
-                                    style={{ ...btnStyle, ...btnGhostStyle }}
-                                >
-                                    Adicionar
-                                </button>
-                            </div>
-
-                            <div style={noteStyle}>
-                                Pagamento via Pix ou Cartão (Mercado Pago). Entrega com cálculo no checkout.
+                                <div style={noteStyle}>
+                                    Pagamento via Pix ou Cartão (Mercado Pago). Entrega com cálculo no checkout.
+                                </div>
                             </div>
                         </div>
-                    </div>
+
+                        {/* MOBILE sticky CTA */}
+                        <div className="product-sticky">
+                            <div className="price">R$ {product.price}</div>
+
+                            <button
+                                className="primary"
+                                onClick={() => {
+                                    addToCart(product, 1);
+                                    navigate("/carrinho");
+                                }}
+                            >
+                                Comprar
+                            </button>
+
+                            <button
+                                className="ghost"
+                                onClick={() => addToCart(product, 1)}
+                                title="Adicionar ao carrinho"
+                            >
+                                +1
+                            </button>
+                        </div>
+                    </>
                 )}
             </div>
         </div>

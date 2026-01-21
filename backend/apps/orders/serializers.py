@@ -52,12 +52,17 @@ class CheckoutCreateSerializer(serializers.Serializer):
 
         shipping_price = Decimal(shipping_data["price"])
         total = subtotal + shipping_price
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user and not user.is_authenticated:
+            user = None
 
         order = Order.objects.create(
-            full_name=validated_data["full_name"],
-            email=validated_data["email"],
-            phone=validated_data.get("phone", ""),
-            status=Order.Status.AWAITING_PAYMENT,
+            full_name = validated_data["full_name"],
+            email = validated_data["email"],
+            phone = validated_data.get("phone", ""),
+            status = Order.Status.AWAITING_PAYMENT,
+            user = user,
 
             subtotal=subtotal,
             shipping_price=shipping_price,
