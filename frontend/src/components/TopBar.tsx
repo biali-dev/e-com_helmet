@@ -1,28 +1,59 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cartCount } from "../cart/cartStore";
+import { me } from "../api/auth";
 
 export default function TopBar() {
     const navigate = useNavigate();
 
     const [count, setCount] = useState(() => cartCount());
 
-    // 🔐 auth simples (JWT no localStorage)
-    const isLogged = useMemo(() => {
-        return Boolean(localStorage.getItem("access_token"));
+    const [isLogged, setIsLogged] = useState(() => Boolean(localStorage.getItem("access_token")));
+    const [username, setUsername] = useState<string>("");
+
+    async function syncAuth() {
+        const token = localStorage.getItem("access_token");
+        const logged = Boolean(token);
+        setIsLogged(logged);
+
+        if (!logged) {
+            setUsername("");
+            return;
+        }
+
+        try {
+            const u = await me(); // GET /me/
+            setUsername(u?.username || "");
+        } catch {
+            setUsername("");
+        }
+    }
+
+    // Atualiza auth no mount e quando houver login/logout
+    useEffect(() => {
+        syncAuth();
+
+        const handler = () => {
+            syncAuth();
+        };
+
+        window.addEventListener("auth:updated", handler);
+        return () => window.removeEventListener("auth:updated", handler);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Atualiza badge do carrinho ao vivo
     useEffect(() => {
         const handler = () => setCount(cartCount());
         window.addEventListener("cart:updated", handler);
         return () => window.removeEventListener("cart:updated", handler);
     }, []);
 
-    function logout() {
+    function logoutNow() {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
+        window.dispatchEvent(new Event("auth:updated"));
         navigate("/");
-        window.location.reload(); // garante header atualizado
     }
 
     return (
@@ -33,16 +64,12 @@ export default function TopBar() {
                     <Link to="/" style={{ ...brandStyle, textDecoration: "none" }}>
                         CYBER VOLT
                     </Link>
-                    <span style={subtitleStyle}>
-                        CAPACETES E ACESSÓRIOS
-                    </span>
+                    <span style={subtitleStyle}>CAPACETES E ACESSÓRIOS</span>
                 </div>
 
                 {/* RIGHT */}
                 <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-                    <Link to="/" style={navLinkStyle}>
-                        Loja
-                    </Link>
+                    <Link to="/" style={navLinkStyle}>Loja</Link>
 
                     <Link to="/carrinho" style={navLinkStyle}>
                         Carrinho
@@ -50,20 +77,14 @@ export default function TopBar() {
                     </Link>
 
                     {!isLogged ? (
-                        <Link to="/login" style={navLinkStyle}>
-                            Entrar
-                        </Link>
+                        <Link to="/login" style={navLinkStyle}>Entrar</Link>
                     ) : (
                         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            <Link to="/conta" style={navLinkStyle}>
-                                Minha conta
-                            </Link>
+                            <span style={helloStyle}>Olá{username ? `, ${username}` : ""}</span>
 
-                            <button
-                                onClick={logout}
-                                style={logoutBtnStyle}
-                                title="Sair"
-                            >
+                            <Link to="/conta" style={navLinkStyle}>Minha conta</Link>
+
+                            <button onClick={logoutNow} style={logoutBtnStyle} title="Sair">
                                 Sair
                             </button>
                         </div>
@@ -138,4 +159,13 @@ const logoutBtnStyle: React.CSSProperties = {
     textTransform: "uppercase",
     cursor: "pointer",
     color: "#111",
+};
+
+const helloStyle: React.CSSProperties = {
+    color: "#111",
+    fontWeight: 900,
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    opacity: 0.75,
 };

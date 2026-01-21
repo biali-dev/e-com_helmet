@@ -9,6 +9,7 @@ export async function login(username: string, password: string) {
     const { data } = await api.post("/auth/token/", { username, password });
     localStorage.setItem("access_token", data.access);
     localStorage.setItem("refresh_token", data.refresh);
+    window.dispatchEvent(new Event("auth:updated"));
     return data;
 }
 
@@ -20,4 +21,5 @@ export async function me() {
 export function logout() {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
+    window.dispatchEvent(new Event("auth:updated"));
 }
