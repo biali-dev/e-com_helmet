@@ -107,8 +107,7 @@ const topBarStyle: React.CSSProperties = {
 };
 
 const topBarInnerStyle: React.CSSProperties = {
-    maxWidth: 1180,
-    margin: "0 auto",
+    width: "100%",
     padding: "18px 20px",
     display: "flex",
     justifyContent: "space-between",

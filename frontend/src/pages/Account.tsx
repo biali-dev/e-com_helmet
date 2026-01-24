@@ -1,21 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import { me, logout } from "../api/auth";
 import { fetchMyOrders } from "../api/myOrders";
-
-type MeUser = {
-    id: number;
-    username: string;
-    email: string;
-};
-
-type Order = {
-    id: number;
-    status: string;
-    total: string;
-    created_at: string;
-};
 
 type ApiErrorLike = {
     response?: { data?: unknown };
@@ -30,6 +17,31 @@ function safeJson(v: unknown) {
     }
 }
 
+type MeUser = {
+    id: number;
+    username: string;
+    email: string;
+};
+
+type Order = {
+    id: number;
+    status: string;
+    total: string;
+    created_at: string;
+};
+
+function formatDateBR(iso: string) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString("pt-BR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
 function statusLabel(status: string) {
     const s = (status || "").toLowerCase();
     if (s === "paid") return "Pago";
@@ -40,6 +52,7 @@ function statusLabel(status: string) {
 
 function statusPillStyle(status: string): React.CSSProperties {
     const s = (status || "").toLowerCase();
+
     if (s === "paid") {
         return {
             border: "1px solid rgba(0,255,140,.25)",
@@ -47,6 +60,7 @@ function statusPillStyle(status: string): React.CSSProperties {
             color: "rgba(220,255,235,.95)",
         };
     }
+
     if (s === "canceled") {
         return {
             border: "1px solid rgba(255,92,119,.35)",
@@ -54,6 +68,7 @@ function statusPillStyle(status: string): React.CSSProperties {
             color: "#ff5c77",
         };
     }
+
     return {
         border: "1px solid rgba(255,255,255,.14)",
         background: "rgba(255,255,255,.06)",
@@ -61,7 +76,7 @@ function statusPillStyle(status: string): React.CSSProperties {
     };
 }
 
-const pillStyle: React.CSSProperties = {
+const pillBaseStyle: React.CSSProperties = {
     borderRadius: 999,
     padding: "6px 10px",
     fontSize: 12,
@@ -78,6 +93,8 @@ export default function AccountPage() {
     const [loadingUser, setLoadingUser] = useState(true);
     const [loadingOrders, setLoadingOrders] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    const ordersCount = useMemo(() => orders.length, [orders]);
 
     useEffect(() => {
         (async () => {
@@ -118,7 +135,7 @@ export default function AccountPage() {
     function handleLogout() {
         logout();
         navigate("/");
-        window.location.reload(); // garante TopBar atualizar
+        window.dispatchEvent(new Event("auth:updated"));
     }
 
     return (
@@ -140,12 +157,14 @@ export default function AccountPage() {
 
                 {error && <div style={errorStyle}>{error}</div>}
 
-                {/* Perfil */}
+                {/* PERFIL */}
                 <div style={cardStyle}>
                     <div style={miniTitleStyle}>DADOS DO USUÁRIO</div>
 
                     {loadingUser ? (
-                        <div style={{ marginTop: 12, color: "rgba(255,255,255,.75)" }}>Carregando...</div>
+                        <div style={{ marginTop: 12, color: "rgba(255,255,255,.75)" }}>
+                            Carregando…
+                        </div>
                     ) : user ? (
                         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
                             <Line label="ID" value={String(user.id)} />
@@ -159,24 +178,25 @@ export default function AccountPage() {
                     )}
 
                     <div style={microcopyStyle}>
-                        Dica: pedidos feitos logado aparecem automaticamente aqui. Pedidos guest podem ser vinculados após login.
+                        Pedidos feitos logado aparecem automaticamente aqui. Pedidos guest podem ser vinculados após login.
                     </div>
                 </div>
 
-                {/* Pedidos */}
+                {/* PEDIDOS */}
                 <div style={{ marginTop: 16 }}>
                     <div style={sectionTitleRowStyle}>
                         <div>
                             <div style={kickerStyle}>Meus pedidos</div>
                             <h2 style={h2Style}>HISTÓRICO</h2>
                         </div>
+
                         <div style={{ color: "rgba(255,255,255,.7)", fontWeight: 800, fontSize: 12 }}>
-                            {loadingOrders ? "…" : `${orders.length} pedidos`}
+                            {loadingOrders ? "…" : `${ordersCount} pedidos`}
                         </div>
                     </div>
 
                     {loadingOrders ? (
-                        <div style={{ color: "rgba(255,255,255,.75)" }}>Carregando pedidos...</div>
+                        <div style={{ color: "rgba(255,255,255,.75)" }}>Carregando pedidos…</div>
                     ) : orders.length === 0 ? (
                         <div style={emptyCardStyle}>
                             <div style={{ fontWeight: 1000, fontSize: 18 }}>Nenhum pedido ainda.</div>
@@ -195,7 +215,7 @@ export default function AccountPage() {
                                         <div style={{ fontWeight: 1000 }}>Pedido #{o.id}</div>
 
                                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                            <span style={{ ...pillStyle, ...statusPillStyle(o.status) }}>
+                                            <span style={{ ...pillBaseStyle, ...statusPillStyle(o.status) }}>
                                                 {statusLabel(o.status)}
                                             </span>
                                             <div style={{ fontWeight: 1000 }}>R$ {o.total}</div>
@@ -203,7 +223,7 @@ export default function AccountPage() {
                                     </div>
 
                                     <div style={{ marginTop: 6, color: "rgba(255,255,255,.75)", fontSize: 12, fontWeight: 800 }}>
-                                        {o.created_at}
+                                        {formatDateBR(o.created_at)}
                                     </div>
                                 </Link>
                             ))}
@@ -217,9 +237,9 @@ export default function AccountPage() {
 
 function Line({ label, value }: { label: string; value: string }) {
     return (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
             <div style={{ color: "rgba(255,255,255,.7)", fontWeight: 900 }}>{label}</div>
-            <div style={{ fontWeight: 1000 }}>{value}</div>
+            <div style={{ fontWeight: 1000, textAlign: "right" }}>{value}</div>
         </div>
     );
 }
@@ -236,6 +256,7 @@ const subTitleStyle: React.CSSProperties = { marginTop: 10, color: "rgba(255,255
 
 const cardStyle: React.CSSProperties = { background: "#141824", border: "1px solid #252a3a", borderRadius: 14, padding: 16 };
 const miniTitleStyle: React.CSSProperties = { fontWeight: 1000, letterSpacing: 2, fontSize: 12, color: "rgba(255,255,255,.65)" };
+
 const microcopyStyle: React.CSSProperties = { marginTop: 12, color: "rgba(255,255,255,.65)", fontSize: 12, fontWeight: 700, lineHeight: 1.4 };
 
 const sectionTitleRowStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, marginBottom: 12 };

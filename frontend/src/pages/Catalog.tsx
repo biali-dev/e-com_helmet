@@ -4,6 +4,7 @@ import TopBar from "../components/TopBar";
 import { fetchProducts } from "../api/catalog";
 import type { Product } from "../api/catalog";
 import { addToCart } from "../cart/cartStore";
+
 import "../styles/catalog.css";
 
 export default function Catalog() {
@@ -18,7 +19,6 @@ export default function Catalog() {
             .finally(() => setLoading(false));
     }, []);
 
-    // “Destaques” simples: os 3 primeiros
     const featured = useMemo(() => products.slice(0, 3), [products]);
     const rest = useMemo(() => products.slice(3), [products]);
 
@@ -26,61 +26,68 @@ export default function Catalog() {
         <div style={pageStyle}>
             <TopBar />
 
-            <div className="catalog-wrap" style={wrapStyle}>
-                {/* HERO */}
-                <section className="catalog-hero" style={heroStyle}>
-                    <div style={heroLeftStyle}>
-                        <div style={heroKickerStyle}>Capacetes • Acessórios • Motos elétricas</div>
-                        <h1 className="hero-title" style={heroTitleStyle}>
-                            PROTEÇÃO
-                            <br />
-                            COM ESTILO
-                        </h1>
-                        <p style={heroTextStyle}>
-                            Capacetes e acessórios selecionados para mobilidade elétrica e urbana.
-                            Compra rápida com Pix ou cartão.
-                        </p>
+            {/* HERO full-bleed (branco até o final da tela) */}
+            <section style={heroOuterStyle}>
+                <div className="catalog-wrap">
+                    <div className="catalog-hero" style={heroInnerStyle}>
+                        {/* LEFT */}
+                        <div>
+                            <div style={heroKickerStyle}>CAPACETES • ACESSÓRIOS • MOTOS ELÉTRICAS</div>
 
-                        <div style={heroCtasStyle}>
-                            <a href="#catalogo" style={{ ...btnStyle, ...btnPrimaryStyle, textDecoration: "none", display: "inline-block" }}>
-                                Ver catálogo
-                            </a>
-                            <Link to="/carrinho" style={{ ...btnStyle, ...btnGhostStyle, textDecoration: "none", display: "inline-block" }}>
-                                Ir ao carrinho
-                            </Link>
-                        </div>
+                            <h1 style={heroTitleStyle}>
+                                PROTEÇÃO
+                                <br />
+                                COM ESTILO
+                            </h1>
 
-                        <div style={chipsRowStyle}>
-                            <Chip text="5% OFF no Pix" />
-                            <Chip text="Parcele no cartão" />
-                            <Chip text="Frete no checkout" />
-                        </div>
-                    </div>
+                            <p style={heroTextStyle}>
+                                Capacetes e acessórios selecionados para mobilidade elétrica e urbana.
+                                Compra rápida com Pix ou cartão.
+                            </p>
 
-                    {/* HERO visual (sem imagem externa) */}
-                    <div style={heroRightStyle}>
-                        <div style={heroVisualStyle}>
-                            <div style={heroVisualTopStyle}>
-                                <div style={{ fontWeight: 1000, letterSpacing: 2, fontSize: 12, opacity: 0.85 }}>NOVIDADE</div>
-                                <div style={{ fontWeight: 1000, fontSize: 18, marginTop: 6 }}>Linha urbana</div>
+                            <div style={heroCtasStyle}>
+                                <a href="#catalogo" style={{ ...btnStyle, ...btnPrimaryLightStyle, textDecoration: "none" }}>
+                                    Ver catálogo
+                                </a>
+                                <Link to="/carrinho" style={{ ...btnStyle, ...btnGhostLightStyle, textDecoration: "none" }}>
+                                    Ir ao carrinho
+                                </Link>
                             </div>
 
-                            <div style={heroVisualMidStyle}>
-                                <div style={heroCircleStyle} />
-                                <div style={heroCircle2Style} />
-                                <div style={heroVisualLabelStyle}>E-MOBILITY READY</div>
+                            <div style={chipsRowStyle}>
+                                <Chip text="5% OFF NO PIX" />
+                                <Chip text="PARCELE NO CARTÃO" />
+                                <Chip text="FRETE NO CHECKOUT" />
                             </div>
+                        </div>
 
-                            <div style={heroVisualBottomStyle}>
-                                <div style={{ color: "rgba(255,255,255,.75)", fontSize: 12, fontWeight: 800 }}>
-                                    Segurança • Conforto • Ventilação
+                        {/* RIGHT */}
+                        <div style={heroVisualWrapStyle}>
+                            <div style={heroVisualStyle}>
+                                <div style={heroVisualTopStyle}>
+                                    <div style={{ fontWeight: 1000, letterSpacing: 2, fontSize: 12, opacity: 0.85 }}>NOVIDADE</div>
+                                    <div style={{ fontWeight: 1000, fontSize: 18, marginTop: 6 }}>Linha urbana</div>
+                                </div>
+
+                                <div style={heroVisualMidStyle}>
+                                    <div style={heroCircleStyle} />
+                                    <div style={heroCircle2Style} />
+                                    <div style={heroVisualLabelStyle}>E-MOBILITY READY</div>
+                                </div>
+
+                                <div style={heroVisualBottomStyle}>
+                                    <div style={{ color: "rgba(255,255,255,.75)", fontSize: 12, fontWeight: 800 }}>
+                                        Segurança • Conforto • Ventilação
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </section>
+                </div>
+            </section>
 
-                {/* STATUS */}
+            {/* CONTEÚDO (dark) */}
+            <div className="catalog-wrap">
                 {loading && <div style={{ color: "rgba(255,255,255,.75)", marginTop: 16 }}>Carregando...</div>}
                 {err && <div style={errorStyle}>{err}</div>}
 
@@ -93,41 +100,14 @@ export default function Catalog() {
                                     <div style={kickerStyle}>Destaques</div>
                                     <h2 style={h2Style}>ESCOLHIDOS DA SEMANA</h2>
                                 </div>
+
                                 <a href="#catalogo" style={ghostLinkStyle}>Ver tudo →</a>
                             </div>
 
-                            <div className="catalog-grid-3" style={featuredGridStyle}>
-                                {featured.map((p) => {
-                                    const img = p.images?.[0]?.image;
-
-                                    return (
-                                        <div key={p.id} style={featuredCardStyle}>
-                                            <Link to={`/produto/${p.slug}`} style={{ textDecoration: "none", color: "inherit" }}>
-                                                <div style={featuredImgWrapStyle}>
-                                                    {img ? (
-                                                        <img src={img} alt={p.name} style={imgStyle} />
-                                                    ) : (
-                                                        <div style={{ width: "100%", height: "100%", background: "#0e111a" }} />
-                                                    )}
-                                                </div>
-
-                                                <div style={{ marginTop: 12 }}>
-                                                    <div style={prodNameStyle}>{p.name}</div>
-                                                    <div style={metaStyle}>
-                                                        {p.category?.name}{p.brand ? ` • ${p.brand.name}` : ""}
-                                                    </div>
-                                                </div>
-                                            </Link>
-
-                                            <div style={priceRowStyle}>
-                                                <div style={priceStyle}>R$ {p.price}</div>
-                                                <button onClick={() => addToCart(p, 1)} style={{ ...btnStyle, ...btnPrimaryStyle }}>
-                                                    Comprar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                            <div className="catalog-grid-3">
+                                {featured.map((p) => (
+                                    <FeaturedCard key={p.id} p={p} />
+                                ))}
                             </div>
                         </section>
 
@@ -138,21 +118,19 @@ export default function Catalog() {
                                     <div style={kickerStyle}>Catálogo</div>
                                     <h2 style={h2Style}>TODOS OS PRODUTOS</h2>
                                 </div>
+
                                 <div style={{ color: "rgba(255,255,255,.7)", fontWeight: 800, fontSize: 12 }}>
                                     {products.length} itens
                                 </div>
                             </div>
 
-                            <div className="catalog-grid-3" style={gridStyle}>
-                                {rest.length ? (
-                                    rest.map((p) => <ProductCard key={p.id} p={p} />)
-                                ) : (
-                                    featured.map((p) => <ProductCard key={p.id} p={p} />)
-                                )}
+                            <div className="catalog-grid-3">
+                                {(rest.length ? rest : featured).map((p) => (
+                                    <ProductCard key={p.id} p={p} />
+                                ))}
                             </div>
                         </section>
 
-                        {/* FOOT NOTE */}
                         <div style={footNoteStyle}>
                             Pagamento via Pix e Cartão (Mercado Pago). Frete e prazo calculados no checkout.
                         </div>
@@ -167,6 +145,38 @@ export default function Catalog() {
                         </div>
                     </div>
                 )}
+            </div>
+        </div>
+    );
+}
+
+function FeaturedCard({ p }: { p: Product }) {
+    const img = p.images?.[0]?.image;
+
+    return (
+        <div style={featuredCardStyle}>
+            <Link to={`/produto/${p.slug}`} style={{ textDecoration: "none", color: "inherit" }}>
+                <div style={featuredImgWrapStyle}>
+                    {img ? (
+                        <img src={img} alt={p.name} style={imgStyle} />
+                    ) : (
+                        <div style={{ width: "100%", height: "100%", background: "#0e111a" }} />
+                    )}
+                </div>
+
+                <div style={{ marginTop: 12 }}>
+                    <div style={prodNameStyle}>{p.name}</div>
+                    <div style={metaStyle}>
+                        {p.category?.name}{p.brand ? ` • ${p.brand.name}` : ""}
+                    </div>
+                </div>
+            </Link>
+
+            <div style={priceRowStyle}>
+                <div style={priceStyle}>R$ {p.price}</div>
+                <button onClick={() => addToCart(p, 1)} style={{ ...btnStyle, ...btnPrimaryStyle }}>
+                    Comprar
+                </button>
             </div>
         </div>
     );
@@ -216,26 +226,25 @@ const pageStyle: React.CSSProperties = {
     color: "#e8eaf0",
 };
 
-const wrapStyle: React.CSSProperties = {
-    maxWidth: 1180,
-    margin: "0 auto",
-    padding: "26px 20px 50px",
+/* HERO full width */
+const heroOuterStyle: React.CSSProperties = {
+    width: "100%",
+    background: "#ffffff",
+    borderBottom: "1px solid rgba(0,0,0,.08)",
+    padding: "26px 0",
 };
 
-/* HERO */
-const heroStyle: React.CSSProperties = {
+/* Dentro do container: o bloco do hero */
+const heroInnerStyle: React.CSSProperties = {
+    background: "transparent",
+    color: "#111",
+    borderRadius: 18,
+    padding: 0,
     display: "grid",
     gridTemplateColumns: "1.2fr 0.8fr",
     gap: 18,
     alignItems: "stretch",
-    background: "#ffffff",
-    color: "#111",
-    borderRadius: 18,
-    padding: 22,
-    border: "1px solid rgba(0,0,0,.08)",
 };
-
-const heroLeftStyle: React.CSSProperties = { paddingRight: 8 };
 
 const heroKickerStyle: React.CSSProperties = {
     fontWeight: 900,
@@ -289,7 +298,7 @@ const chipStyle: React.CSSProperties = {
     color: "rgba(0,0,0,.78)",
 };
 
-const heroRightStyle: React.CSSProperties = {
+const heroVisualWrapStyle: React.CSSProperties = {
     display: "grid",
     placeItems: "stretch",
 };
@@ -319,7 +328,6 @@ const heroCircleStyle: React.CSSProperties = {
     height: 220,
     borderRadius: "50%",
     background: "radial-gradient(circle at 30% 30%, rgba(106,166,255,.8), rgba(15,17,21,0) 60%)",
-    filter: "blur(0px)",
 };
 
 const heroCircle2Style: React.CSSProperties = {
@@ -379,13 +387,7 @@ const ghostLinkStyle: React.CSSProperties = {
     whiteSpace: "nowrap",
 };
 
-/* Featured grid */
-const featuredGridStyle: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 16,
-};
-
+/* Cards */
 const featuredCardStyle: React.CSSProperties = {
     background: "#141824",
     border: "1px solid #252a3a",
@@ -400,13 +402,6 @@ const featuredImgWrapStyle: React.CSSProperties = {
     overflow: "hidden",
     border: "1px solid #252a3a",
     background: "#0e111a",
-};
-
-/* Catalog grid */
-const gridStyle: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 16,
 };
 
 const cardStyle: React.CSSProperties = {
@@ -426,8 +421,10 @@ const imgWrapStyle: React.CSSProperties = {
 };
 
 const imgStyle: React.CSSProperties = { width: "100%", height: "100%", objectFit: "cover" };
+
 const prodNameStyle: React.CSSProperties = { fontWeight: 1000, letterSpacing: 0.2 };
 const metaStyle: React.CSSProperties = { marginTop: 4, color: "rgba(255,255,255,.65)", fontSize: 12, fontWeight: 800 };
+
 const priceRowStyle: React.CSSProperties = { marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 };
 const priceStyle: React.CSSProperties = { fontWeight: 1000, fontSize: 18 };
 
@@ -443,7 +440,8 @@ const btnStyle: React.CSSProperties = {
 };
 
 const btnPrimaryStyle: React.CSSProperties = { background: "#ffffff", color: "#111" };
-const btnGhostStyle: React.CSSProperties = { background: "transparent", color: "rgba(0,0,0,.85)", border: "1px solid rgba(0,0,0,.16)" };
+const btnPrimaryLightStyle: React.CSSProperties = { background: "#111", color: "#fff", border: "1px solid rgba(0,0,0,.16)" };
+const btnGhostLightStyle: React.CSSProperties = { background: "transparent", color: "rgba(0,0,0,.85)", border: "1px solid rgba(0,0,0,.16)" };
 
 const errorStyle: React.CSSProperties = {
     marginTop: 14,

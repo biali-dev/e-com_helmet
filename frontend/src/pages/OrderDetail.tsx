@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import { fetchMyOrder } from "../api/myOrders";
+import { payNowForMyOrder } from "../api/payNow";
 
 type ApiErrorLike = {
     response?: { data?: unknown };
@@ -88,9 +89,12 @@ export default function OrderDetailPage() {
     const { id } = useParams<{ id: string }>();
     const orderId = Number(id);
 
+    const navigate = useNavigate();
     const [order, setOrder] = useState<OrderDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
+    const [payLoading, setPayLoading] = useState(false);
+    const [payError, setPayError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!orderId) {
@@ -120,6 +124,22 @@ export default function OrderDetailPage() {
     const itemsCount = useMemo(() => {
         return order?.items?.reduce((s, it) => s + (it.qty || 0), 0) ?? 0;
     }, [order]);
+
+    async function handlePayNow() {
+        if (!order) return;
+
+        setPayError(null);
+        setPayLoading(true);
+
+        try {
+            const payment = await payNowForMyOrder(order.id, "mercado_pago", "pix");
+            navigate(`/pagamento/${payment.id}`);
+        } catch {
+            setPayError("Não foi possível iniciar o pagamento. Tente novamente.");
+        } finally {
+            setPayLoading(false);
+        }
+    }
 
     return (
         <div style={pageStyle}>
@@ -236,19 +256,25 @@ export default function OrderDetailPage() {
                                     <div style={dividerStyle} />
 
                                     <div style={{ display: "grid", gap: 10 }}>
-                                        <Link to="/" style={{ ...btnStyle, ...btnPrimaryStyle, textDecoration: "none", textAlign: "center" }}>
+                                        <Link
+                                            to="/"
+                                            style={{ ...btnStyle, ...btnPrimaryStyle, textDecoration: "none", textAlign: "center" }}
+                                        >
                                             Continuar comprando
                                         </Link>
 
-                                        {/* CTA opcional: se estiver aguardando pagamento */}
                                         {String(order.status).toLowerCase() === "awaiting_payment" && (
-                                            <Link
-                                                to="/checkout"
-                                                style={{ ...btnStyle, ...btnGhostStyle, textDecoration: "none", textAlign: "center" }}
-                                                title="Você pode refazer o checkout para pagar novamente"
-                                            >
-                                                Pagar agora
-                                            </Link>
+                                            <>
+                                                {payError && <div style={errorMiniStyle}>{payError}</div>}
+
+                                                <button
+                                                    onClick={handlePayNow}
+                                                    disabled={payLoading}
+                                                    style={{ ...btnStyle, ...btnGhostStyle }}
+                                                >
+                                                    {payLoading ? "Iniciando..." : "Pagar agora (Pix)"}
+                                                </button>
+                                            </>
                                         )}
                                     </div>
 
@@ -342,4 +368,14 @@ const errorStyle: React.CSSProperties = {
     padding: 12,
     borderRadius: 12,
     fontWeight: 800,
+};
+
+const errorMiniStyle: React.CSSProperties = {
+    border: "1px solid rgba(255,92,119,.35)",
+    background: "rgba(255,92,119,.12)",
+    color: "#ff5c77",
+    padding: 10,
+    borderRadius: 12,
+    fontWeight: 800,
+    fontSize: 12,
 };
